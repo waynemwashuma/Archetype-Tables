@@ -8,12 +8,12 @@ class Archtype {
    */
   insert(entity) {
     if (entity.id !== -1)
-      return Err.warn("An entity has been added twice into the archetype table.\nThe dublicate will be ignored.")
+      return Err.warn("An entity has been added twice into an archetype.\nThe dublicate will be ignored.")
     for (let i = 0; i < this.keys.length; i++) {
       this.components.get(this.keys[i]).push(entity.get(this.keys[i]))
     }
     this.entities.push(entity)
-    entity.id = this.components.get(this.keys[0]).length - 1
+    entity.id = this.entities.length - 1
   }
   remove(entity) {
     const index = entity.id
@@ -27,7 +27,7 @@ class Archtype {
       this.entities,
       index
     )
-    if (this.entities.length)
+    if ( index !== this.entities.length)
       this.entities[index].id = index
     entity.id = -1
   }
@@ -56,11 +56,26 @@ export class NaiveArchTypeTable {
     this.list.push(archetype)
     return archetype
   }
+  _ArcheTypeHasOnly(archetype,comps){
+    if (comps.length !== archetype.components.size) return false
+    for (let i = 0; i < comps.length; i++) {
+      if (!archetype.components.has(comps[i])) return false
+    }
+    return true
+  }
   _getArchetype(comps) {
+    for (let i = 0; i < this.list.length; i++) {
+      if (this._ArcheTypeHasOnly(this.list[i],comps)) {
+        return this.list[i]
+      }
+    }
+    return null
+  }
+  _getArchetypes(comps) {
     const filtered = []
     for (let i = 0; i < this.list.length; i++) {
       let hasComponents = true
-      for (var j = 0; j < comps.length; j++) {
+      for (let j = 0; j < comps.length; j++) {
         if (!this.list[i].hasComponentList(comps[j])) {
           hasComponents = false
           break
@@ -77,8 +92,9 @@ export class NaiveArchTypeTable {
       keys.push(name)
     }
     let t =
-      this._getArchetype(keys)[0] ||
+      this._getArchetype(keys) ||
       this._createArchetype(keys)
+
     t.insert(entity)
   }
   remove(entity) {
@@ -86,11 +102,11 @@ export class NaiveArchTypeTable {
     for (let name in entity._components) {
       keys.push(name)
     }
-    const t = this._getArchetype(keys)[0]
+    const t = this._getArchetype(keys)
     t.remove(entity)
   }
   query(compnames) {
-    let archetypes = this._getArchetype(compnames)
+    let archetypes = this._getArchetypes(compnames)
     let out = []
     for (let i = 0; i < compnames.length; i++) {
       out[i] = []
@@ -98,9 +114,10 @@ export class NaiveArchTypeTable {
     for (let i = 0; i < out.length; i++) {
       for (let j = 0; j < archetypes.length; j++) {
         const bin = archetypes[j].getComponentLists(compnames[i])
-        for (let k = 0; k < bin.length; k++) {
+        out[i].push(bin)
+        /*for (let k = 0; k < bin.length; k++) {
           out[i].push(bin[k])
-        }
+        }*/
       }
     }
     return out

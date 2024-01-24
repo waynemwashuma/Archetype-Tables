@@ -1,11 +1,12 @@
-import { Utils,Entity, Vector2, Angle, rand } from "./chaos.module.js"
+import { Utils, Entity, Vector2, Angle, rand, Renderer2D } from "./chaos.module.js"
 import { NaiveArchTypeTable } from "./naivearchtypetable.js"
 import { Tester, measurePerf } from "./tester.js"
-const sampleSize = 1000000
+const sampleSize = 10000
 const querySample = ["pos", "vel"]
 const sample = createRandom(sampleSize, ["pos", "vel", "rot", "orient"])
-
-
+const renderer = new Renderer2D()
+renderer.bindTo("#can")
+renderer.setViewport(innerWidth, innerHeight)
 /*let a = createEntity([])
 let b = createEntity(["pos","vel"])
 let c = createEntity(["pos"])
@@ -35,7 +36,7 @@ const traditional_table = {
     for (let name in entity._components) {
       this.list[name][entity.id] = null
     }
-    Utils.removeElement(this.entities,entity.index)
+    Utils.removeElement(this.entities, entity.index)
     entity.id = -1
   },
   query(comps) {
@@ -66,20 +67,20 @@ const testrunner_naive = new Tester(table_naive, sample)
 const naive_insert = testrunner_naive.measureInsert()
 const naive_query = testrunner_naive.measureQuery(querySample)
 const naive_iterate = testrunner_naive.measureIteration(iterateEntities)
-const naive_remove = testrunner_naive.measureRemove()
+const naive_remove = 0 // testrunner_naive.measureRemove()
 
+console.log(table_naive)
 console.log("  Insertion time :: " + naive_insert + "ms.")
 console.log("  Removal time :: " + naive_remove + "ms.")
 console.log("  Query time :: " + naive_query + "ms.")
 console.log("  Iteration time :: " + naive_iterate + "ms.")
 /**/
-
 function createEntity(comps) {
   const entity = new Entity()
   for (let i = 0; i < comps.length; i++) {
     switch (comps[i]) {
       case "pos":
-        entity.attach("pos", new Vector2())
+        entity.attach("pos", new Vector2(rand(0, innerWidth), rand(0, innerHeight)))
         break
       case "vel":
         entity.attach("vel", new Vector2())
@@ -124,3 +125,23 @@ function iterateEntitiesSafe(comps) {
     }
   }
 }
+
+function render(ctx, position) {
+  ctx.beginPath()
+  ctx.arc(position.x,position.y, 10, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.closePath()
+}
+function renderloop() {
+  let [positions] = table_naive.query(["pos"])
+  renderer.ctx.fillStyle = "black"
+  for (let i = 0; i < positions.length; i++) {
+    for (let j = 0; j < positions[i].length; j++) {
+      render(renderer.ctx, positions[i][j])
+    }
+
+  }
+  //requestAnimationFrame(renderloop)
+}
+renderloop()
+console.log("drawingtime:: " + measurePerf(renderloop))
