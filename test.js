@@ -11,21 +11,6 @@ import { Tester, measurePerf } from "./src/tester.js"
 const sampleSize = 1000
 const querySample = ["pos", "vel"]
 const sample = createRandom(sampleSize, ["pos", "vel", "rot", "orient"])
-const renderer = new Renderer2D()
-renderer.bindTo("#can")
-renderer.setViewport(innerWidth, innerHeight)
-/*let a = createEntity([])
-let b = createEntity(["pos","vel"])
-let c = createEntity(["pos"])
-let d = createEntity(["vel","pos"])
-
-table_naive.insert(a)
-table_naive.insert(b)
-table_naive.insert(c)
-table_naive.insert(d)
-
-console.log(table_naive)
-console.log(table_naive.query(["vel","pos"]))/**/
 console.log("-----Traditional method -----\n")
 const traditional_table = {
   entities: [],
@@ -133,25 +118,3 @@ function iterateEntitiesSafe(comps) {
     }
   }
 }
-
-function render(ctx, position) {
-  ctx.beginPath()
-  ctx.arc(position.x, position.y, 10, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.closePath()
-}
-
-function renderloop() {
-  let [positions] = table_naive.query(["pos"])
-  console.log(positions)
-  renderer.ctx.fillStyle = "black"
-  for (let i = 0; i < positions.length; i++) {
-    for (let j = 0; j < positions[i].length; j++) {
-      render(renderer.ctx, positions[i][j])
-    }
-
-  }
-  //requestAnimationFrame(renderloop)
-}
-renderloop()
-console.log("drawingtime:: " + measurePerf(renderloop))
