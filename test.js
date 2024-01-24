@@ -1,7 +1,14 @@
-import { Utils, Entity, Vector2, Angle, rand, Renderer2D } from "./chaos.module.js"
-import { NaiveArchTypeTable } from "./naivearchtypetable.js"
-import { Tester, measurePerf } from "./tester.js"
-const sampleSize = 10000
+import {
+  Utils,
+  Entity,
+  Vector2,
+  Angle,
+  rand,
+  Renderer2D,
+} from "./src/chaos.module.js"
+import { NaiveArchTypeTable } from "./src/naivearchtypetable.js"
+import { Tester, measurePerf } from "./src/tester.js"
+const sampleSize = 1000
 const querySample = ["pos", "vel"]
 const sample = createRandom(sampleSize, ["pos", "vel", "rot", "orient"])
 const renderer = new Renderer2D()
@@ -75,6 +82,7 @@ console.log("  Removal time :: " + naive_remove + "ms.")
 console.log("  Query time :: " + naive_query + "ms.")
 console.log("  Iteration time :: " + naive_iterate + "ms.")
 /**/
+
 function createEntity(comps) {
   const entity = new Entity()
   for (let i = 0; i < comps.length; i++) {
@@ -128,12 +136,14 @@ function iterateEntitiesSafe(comps) {
 
 function render(ctx, position) {
   ctx.beginPath()
-  ctx.arc(position.x,position.y, 10, 0, Math.PI * 2)
+  ctx.arc(position.x, position.y, 10, 0, Math.PI * 2)
   ctx.fill()
   ctx.closePath()
 }
+
 function renderloop() {
   let [positions] = table_naive.query(["pos"])
+  console.log(positions)
   renderer.ctx.fillStyle = "black"
   for (let i = 0; i < positions.length; i++) {
     for (let j = 0; j < positions[i].length; j++) {
