@@ -1,23 +1,78 @@
-import { Entity, Vector2, Angle, rand } from "./chaos.module.js"
+import { Utils,Entity, Vector2, Angle, rand } from "./chaos.module.js"
 import { NaiveArchTypeTable } from "./naivearchtypetable.js"
+import { Tester, measurePerf } from "./tester.js"
+const sampleSize = 1000000
+const querySample = ["pos", "vel"]
+const sample = createRandom(sampleSize, ["pos", "vel", "rot", "orient"])
 
-const entity1 = createEntity(["pos", "vel"])
-const entity2 = createEntity(["pos", "vel"])
-const entities = createRandom(100000, ["pos", "vel", "rot", "orient"])
 
-const game = new NaiveArchTypeTable()
+/*let a = createEntity([])
+let b = createEntity(["pos","vel"])
+let c = createEntity(["pos"])
+let d = createEntity(["vel","pos"])
 
-game.insert(entity1)
-game.insert(entity2)
+table_naive.insert(a)
+table_naive.insert(b)
+table_naive.insert(c)
+table_naive.insert(d)
 
-game.remove(entity1)
-game.remove(entity2)
+console.log(table_naive)
+console.log(table_naive.query(["vel","pos"]))/**/
+console.log("-----Traditional method -----\n")
+const traditional_table = {
+  entities: [],
+  list: {},
+  insert(entity) {
+    entity.id = this.entities.length
+    for (let name in entity._components) {
+      if (!this.list[name])
+        this.list[name] = []
+      this.list[name][entity.id] = entity.get(name)
+    }
+    this.entities.push(entity)
+  },
+  remove(entity) {
+    for (let name in entity._components) {
+      this.list[name][entity.id] = null
+    }
+    Utils.removeElement(this.entities,entity.index)
+    entity.id = -1
+  },
+  query(comps) {
+    const out = []
+    for (let name of comps) {
+      out.push([this.list[name]])
+    }
+    return out
+  }
+}
+const testrunner_traditional = new Tester(traditional_table, sample)
 
-addToTable(game, entities)
+const traditional_insert = testrunner_traditional.measureInsert()
+const traditional_query = testrunner_traditional.measureQuery(querySample)
+const traditional_iterate = testrunner_traditional.measureIteration(iterateEntitiesSafe)
+const traditional_remove = testrunner_traditional.measureRemove()
 
-console.log(game)
-console.log(measurePerf(() => game.query(["pos", "vel"])))
-console.log(game.query(["pos", "vel"]))
+console.log("  Insertion time :: " + traditional_insert + "ms.")
+console.log("  Removal time :: " + traditional_remove + "ms.")
+console.log("  Query time :: " + traditional_query + "ms.")
+console.log("  Iteration time :: " + traditional_iterate + "ms.")
+/**/
+
+console.log("-----Naive Archype Table-----\n")
+const table_naive = new NaiveArchTypeTable()
+const testrunner_naive = new Tester(table_naive, sample)
+
+const naive_insert = testrunner_naive.measureInsert()
+const naive_query = testrunner_naive.measureQuery(querySample)
+const naive_iterate = testrunner_naive.measureIteration(iterateEntities)
+const naive_remove = testrunner_naive.measureRemove()
+
+console.log("  Insertion time :: " + naive_insert + "ms.")
+console.log("  Removal time :: " + naive_remove + "ms.")
+console.log("  Query time :: " + naive_query + "ms.")
+console.log("  Iteration time :: " + naive_iterate + "ms.")
+/**/
 
 function createEntity(comps) {
   const entity = new Entity()
@@ -50,20 +105,22 @@ function createRandom(number, comps) {
   return entities
 }
 
-function addToTable(table, entities) {
-  for (let i = 0; i < entities.length; i++) {
-    table.insert(entities[i])
+function iterateEntities(comps) {
+  const [position, velocity] = comps
+  for (let i = 0; i < position.length; i++) {
+    for (let j = 0; j < position[i].length; j++) {
+      position[i][j].add(velocity[i][j])
+    }
   }
 }
 
-function removeFromTable(table, entities) {
-  for (let i = 0; i < entities.length; i++) {
-    table.remove(entities[i])
+function iterateEntitiesSafe(comps) {
+  const [position, velocity] = comps
+  for (let i = 0; i < position.length; i++) {
+    for (let j = 0; j < position[i].length; j++) {
+      if (!position[i][j] || !velocity[i][j])
+        continue
+      position[i][j].add(velocity[i][j])
+    }
   }
-}
-
-function measurePerf(func) {
-  const t = performance.now()
-  func()
-  return performance.now() - t
 }
