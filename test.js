@@ -59,7 +59,7 @@ const testrunner_naive = new Tester(table_naive, sample)
 const naive_insert = testrunner_naive.measureInsert()
 const naive_query = testrunner_naive.measureQuery(querySample)
 const naive_iterate = testrunner_naive.measureIteration(iterateEntities)
-const naive_remove = 0 // testrunner_naive.measureRemove()
+const naive_remove = testrunner_naive.measureRemove()
 
 console.log(table_naive)
 console.log("  Insertion time :: " + naive_insert + "ms.")
