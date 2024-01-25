@@ -27,7 +27,7 @@ class Archtype {
       this.entities,
       index
     )
-    if ( index !== this.entities.length)
+    if (index !== this.entities.length)
       this.entities[index].id = index
     entity.id = -1
   }
@@ -43,9 +43,6 @@ class Archtype {
   }
 }
 export class NaiveArchTypeTable {
-  queryList = {
-
-  }
   list = []
   constructor() {}
   _createArchetype(comps) {
@@ -56,7 +53,7 @@ export class NaiveArchTypeTable {
     this.list.push(archetype)
     return archetype
   }
-  _ArcheTypeHasOnly(archetype,comps){
+  _ArcheTypeHasOnly(archetype, comps) {
     if (comps.length !== archetype.components.size) return false
     for (let i = 0; i < comps.length; i++) {
       if (!archetype.components.has(comps[i])) return false
@@ -65,7 +62,7 @@ export class NaiveArchTypeTable {
   }
   _getArchetype(comps) {
     for (let i = 0; i < this.list.length; i++) {
-      if (this._ArcheTypeHasOnly(this.list[i],comps)) {
+      if (this._ArcheTypeHasOnly(this.list[i], comps)) {
         return this.list[i]
       }
     }
@@ -107,14 +104,14 @@ export class NaiveArchTypeTable {
   }
   query(compnames) {
     let archetypes = this._getArchetypes(compnames)
-    let out = []
+    let out = {}
     for (let i = 0; i < compnames.length; i++) {
-      out[i] = []
+      out[compnames[i]] = []
     }
-    for (let i = 0; i < out.length; i++) {
+    for (let i = 0; i < compnames.length; i++) {
       for (let j = 0; j < archetypes.length; j++) {
         const bin = archetypes[j].getComponentLists(compnames[i])
-        out[i].push(bin)
+        out[compnames[i]].push(bin)
         /*for (let k = 0; k < bin.length; k++) {
           out[i].push(bin[k])
         }*/

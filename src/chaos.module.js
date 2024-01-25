@@ -870,11 +870,11 @@ class Manager {
    * Creates a new instance of Manager class
    **/
   constructor(options = {}) {
-    this.loader.onfinish = e => {
-      this.init();
-      this.play();
-    };
-    this.loader.loadAll(options.files);
+    options = Object.assign({
+      autoplay:true,
+    },options)
+    this.init()
+    if(options.autoplay)this.play()
   }
   /**
    * This initializes the manager.
@@ -4128,6 +4128,7 @@ class Transform$1 extends Component {
     super();
     this.position = new Vector2$1(x, y);
     this.orientation = new Angle(a);
+    this.scale = new Vector2$1(1,1)
   }
   init() {}
   toJson() {
@@ -7090,7 +7091,6 @@ class Renderer2D extends Renderer {
    */
   add(sprite) {
     super.add(sprite);
-    sprite.geometry?.init(this.ctx);
   }
   clear() {
     this.ctx.setTransform();
@@ -7877,12 +7877,6 @@ class BufferGeometry {
    */
   constructor(vertices) {
     this.vertices = vertices || [];
-  }
-  /**
-   * @package
-   * @param {CanvasRenderingContext2D} ctx
-   */
-  init(ctx) {
     this.updateVertices(this.vertices);
   }
   /**

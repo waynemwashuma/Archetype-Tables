@@ -100,7 +100,7 @@ function createRandom(number, comps) {
 }
 
 function iterateEntities(comps) {
-  const [position, velocity] = comps
+  const { pos: position, vel: velocity } = comps
   for (let i = 0; i < position.length; i++) {
     for (let j = 0; j < position[i].length; j++) {
       position[i][j].add(velocity[i][j])
