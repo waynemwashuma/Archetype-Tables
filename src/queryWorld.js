@@ -1,16 +1,14 @@
-//import { PenetrationSolver, FrictionSolver, ImpulseSolver, ContactSolver,VerletSolver } from "./solvers/index.js";
+import { PenetrationSolver, FrictionSolver, ImpulseSolver, ContactSolver, EulerSolver, NaiveBroadphase, SATNarrowPhase } from "./solvers/index.js"
 import { Vector2 } from "./chaos.module.js";
 import { Utils } from "./chaos.module.js";
-import { ObjType,Settings } from "./settings.js"
-import { NaiveBroadphase } from "./chaos.module.js";
-import { SATNarrowPhase } from "./chaos.module.js";
-import { System } from  "./chaos.module.js";
+import { ObjType, Settings } from "./settings.js"
+import { System } from "./chaos.module.js";
 import { Err as Logger } from "./chaos.module.js";
 
 /**
  * Class responsible for updating bodies,constraints and composites.
  */
-export class queryWorld extends System {
+export class QueryWorld extends System {
   /**
    * A record of collision manifolds.
    * 
@@ -94,7 +92,7 @@ export class queryWorld extends System {
    * 
    * @type {Intergrator}
    */
-  intergrator = VerletSolver
+  intergrator = EulerSolver
   /**
    * @type {boolean}
    * @default true
@@ -123,58 +121,65 @@ export class queryWorld extends System {
       this.gravitationalAcceleration.set(0, x)
     }
   }
-
   /**
    * @private
    */
-  narrowPhase() {
-    this.CLMDs = this.narrowphase.getCollisionPairs(this.contactList, [])
-  }
-  /**
-   * @private
-   */
-  broadPhase() {
-    this.contactList = []
-    this.broadphase.getCollisionPairs(this.contactList)
-  }
-  /**
-   * @private
-   */
-  collisionDetection() {
-    this.broadPhase()
-    this.narrowPhase()
+  collisionDetection(body, bounds, transform) {
+    this.broadphase.update(body, bounds)
+    this.contactList =
+      this.broadphase.getCollisionPairs(body, bounds, [])
+    this.CLMDs = this.narrowphase.getCollisionPairs(body, transform, this.contactList, [])
   }
   /**
    * @private
    * @param {number} dt 
    */
-  collisionResponse(dt) {
+  collisionResponse(movable, dt) {
     let length = this.CLMDs.length,
       manifold,
       inv_dt = 1 / dt
 
-    for (var j = 0; j < this.velocitySolverIterations; j++) {
+    for (let j = 0; j < this.velocitySolverIterations; j++) {
       for (let i = 0; i < length; i++) {
-        manifold = this.CLMDs[i]
-        manifold.velA.set(0, 0)
-        manifold.velB.set(0, 0)
-        manifold.rotA = 0
-        manifold.rotB = 0
-        ImpulseSolver.solve(manifold)
-        FrictionSolver.solve(manifold)
+        this.CLMDs[i].velA.set(0, 0)
+        this.CLMDs[i].velB.set(0, 0)
+        this.CLMDs[i].rotA = 0
+        this.CLMDs[i].rotB = 0
+        const { indexA, indexB } = this.CLMDs[i]
+        ImpulseSolver.solve(
+          movable[indexA[0]][indexA[1]].velocity,
+          movable[indexB[0]][indexB[1]].velocity,
+          movable[indexA[0]][indexA[1]].rotation,
+          movable[indexB[0]][indexB[1]].rotation,
+          this.CLMDs[i]
+        )
+        FrictionSolver.solve(
+          movable[indexA[0]][indexA[1]].velocity,
+          movable[indexB[0]][indexB[1]].velocity,
+          movable[indexA[0]][indexA[1]].rotation,
+          movable[indexB[0]][indexB[1]].rotation,
+          this.CLMDs[i]
+        )
       }
-      for (var i = 0; i < length; i++) {
-        manifold = this.CLMDs[i]
-        manifold.bodyA.velocity.add(manifold.velA)
-        manifold.bodyB.velocity.add(manifold.velB)
-        manifold.bodyA.rotation.value += manifold.rotA
-        manifold.bodyB.rotation.value += manifold.rotB
+      for (let i = 0; i < length; i++) {
+        const { indexA, indexB } = this.CLMDs[i]
+        movable[indexA[0]][indexA[1]].velocity.add(this.CLMDs[i].velA)
+        movable[indexA[0]][indexA[1]].rotation.value += this.CLMDs[i].rotA
+        movable[indexB[0]][indexB[1]].velocity.add(this.CLMDs[i].velB)
+        movable[indexB[0]][indexB[1]].rotation.value += this.CLMDs[i].rotB
       }
     }
 
     for (let i = 0; i < length; i++) {
-      manifold = this.CLMDs[i]
-      PenetrationSolver.solve(manifold, inv_dt)
+      const { indexA, indexB } = this.CLMDs[i]
+      PenetrationSolver.solve(
+        movable[indexA[0]][indexA[1]].velocity,
+        movable[indexB[0]][indexB[1]].velocity,
+        movable[indexA[0]][indexA[1]].rotation,
+        movable[indexB[0]][indexB[1]].rotation,
+        this.CLMDs[i],
+        inv_dt
+      )
     }
 
     for (let i = 0; i < length; i++) {
@@ -198,9 +203,16 @@ export class queryWorld extends System {
     const ad = 1 - this.angularDamping
     for (let i = 0; i < movable.length; i++) {
       for (let j = 0; j < movable[i].length; j++) {
+        transform[i][j].lastPosition.copy(
+          transform[i][j].position
+        )
         this.intergrator.solve(
-          transform[i][j],
-          movable[i][j],
+          transform[i][j].position,
+          movable[i][j].velocity,
+          movable[i][j].acceleration,
+          transform[i][j].orientation,
+          movable[i][j].rotation,
+          movable[i][j].torque,
           dt
         )
         movable[i][j].velocity.multiply(ld)
@@ -213,13 +225,11 @@ export class queryWorld extends System {
    * @param {Movable[][]} movable 
    * @param {number} dt 
    */
-  applyForces(movable, dt) {
+  applyForces(movable, body, dt) {
     for (let i = 0; i < movable.length; i++) {
       for (let j = 0; j < movable[i].length; j++) {
-        const a = movable[i][j]
-        if (a.mass)
-          a.acceleration.add(this.gravitationalAcceleration)
-        this.intergrator.presolve(a,dt)
+        if (!body[i][j].mass) continue
+        movable[i][j].acceleration.add(this.gravitationalAcceleration)
       }
     }
   }
@@ -237,14 +247,60 @@ export class queryWorld extends System {
       this.constraints[i].update(dt)
     }
   }
+  updateGeometry(geometry, vertices, pos, orient, scale) {
+    const cos = Math.cos(orient)
+    const sin = Math.sin(orient)
+    for (let i = 0; i < geometry.vertices.length; i++) {
+      let vertex = vertices[i]
+      vertex.copy(geometry.vertices[i])
+        .rotateFast(cos, sin)
+        .set(
+          vertex.x * scale.x + pos.x,
+          vertex.y * scale.y + pos.y
+        )
+    }
+  }
+  updateShape(shape, position, angle, scale) {
+    shape.angle = shape.offAngle + angle
+    this.updateGeometry(shape.geometry, shape.vertices, new Vector2().copy(position).add(shape.offPosition), shape.angle, scale, position)
+    //position.sub(shape.offPosition)
+  }
+  updateBody(body, transform, bounds) {
+    const orientation = transform.orientation.value
+    for (let i = 0; i < body.shapes.length; i++) {
+      //body.shapes[i].update()
+      this.updateShape(
+        body.shapes[i],
+        transform.position,
+        transform.orientation.value,
+        transform.scale
+      )
+    }
+    for (let i = 0; i < body.anchors.length; i++) {
+      body.anchors[i].copy(body).rotate(orientation)
+    }
+    if (body.autoUpdateBound)
+      ///make sure this function acts on local space not world space! The remove the "else" when that is done
+      bounds.calculateBounds(body, body.boundPadding)
+    else
+      bounds.translate(
+        transform.position.x - transform.lastPosition.x,
+        transform.position.y - transform.lastPosition.y
+      )
+    //transform.orientation.value = orientation % 360
+  }
   /**
    * @private
    * @param {Body[][]} bodies 
    */
-  updateBodies(bodies) {
+  updateBodies(bodies, transform, bounds) {
     for (let i = 0; i < bodies.length; i++) {
       for (let j = 0; j < bodies[i].length; j++) {
-        bodies[i][j].update()
+        this.updateBody(
+          bodies[i][j],
+          transform[i][j],
+          bounds[i][j].bounds
+        )
       }
     }
   }
@@ -253,26 +309,13 @@ export class queryWorld extends System {
    * @param {Manager} manager
    */
   update(dt, manager) {
-    let { transform, movable, body } = manager.query(["transform", "movable","bounds","body"])
-    this.applyGravity(transform, dt)
-    this.updateBodies(body)
-    this.updateConstraints(dt)
-    this.broadphase.update(body)
-    this.collisionDetection()
-    this.collisionResponse(dt)
-    this.updateConstraints(dt)
+    let { transform, movable, bounds, body } = manager.query(["transform", "movable", "bounds", "body"])
+    this.applyForces(movable,body, dt)
+    this.updateBodies(body, transform, bounds)
+    this.collisionDetection(body, bounds, transform)
+    this.collisionResponse(movable, dt)
     if (this.enableIntergrate)
-      this.intergrate(transform,movable,dt)
-    this.updateBodies(body)
-  }
-
-  /**
-   * Initializes the manager.
-   * 
-   * @param {Manager} manager
-   */
-  init(manager) {
-    manager.setComponentList("body", this.objects)
+      this.intergrate(transform, movable, dt)
   }
   /**
    * Searches for objects in a given bounds and returns them.

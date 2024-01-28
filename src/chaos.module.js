@@ -871,10 +871,10 @@ class Manager {
    **/
   constructor(options = {}) {
     options = Object.assign({
-      autoplay:true,
-    },options)
+      autoplay: true,
+    }, options)
     this.init()
-    if(options.autoplay)this.play()
+    if (options.autoplay) this.play()
   }
   /**
    * This initializes the manager.
@@ -1835,6 +1835,19 @@ class Vector2$1 {
   magnitudeSquared() {
     return this.y ** 2 + this.x ** 2
   }
+  /**
+   * Rotates this vector by a given angle in radians.
+   * 
+   * @param {number} cos
+   * @param {number} sin 
+   * @returns {this}
+   */
+  rotateFast(cos, sin) {
+    const x = this.x
+    this.x = x * cos - this.y * sin;
+    this.y = x * sin + this.y * cos;
+    return this
+  };
   /**
    *Calculates length of this vector to another vector
    * @param { Vector2} v the other vector
@@ -2977,7 +2990,7 @@ const Overlaps = {
 
     return distance < b.r * b.r;
   },
-    /**
+  /**
    * Checks if any AABB or/and a BoundingCircle overlap
    * 
    * @param {BoundingBox | BoundingCircle} a
@@ -3039,11 +3052,11 @@ class BoundingBox extends Component {
   /**
    * @param {Vector2} translation
    */
-  translate(translation) {
-    this.min.x += translation.x
-    this.max.x += translation.x
-    this.min.y += translation.y
-    this.max.y += translation.y
+  translate(x, y) {
+    this.min.x += x
+    this.max.x += x
+    this.min.y += y
+    this.max.y += y
   }
   /**
    * 
@@ -4126,9 +4139,10 @@ class Transform$1 extends Component {
    */
   constructor(x, y, a) {
     super();
+    this.lastPosition = new Vector2$1()
     this.position = new Vector2$1(x, y);
     this.orientation = new Angle(a);
-    this.scale = new Vector2$1(1,1)
+    this.scale = new Vector2$1(1, 1)
   }
   init() {}
   toJson() {
@@ -10030,7 +10044,7 @@ const Storage = {
 /**
  * @template T
  */
- class IndexedList {
+class IndexedList {
   /**
    * @private
    * @type {Map<string,number>}
@@ -10168,28 +10182,21 @@ function fpsDebugger(manager) {
 /**
  * @param {Manager} manager
  */
-function bodyDebugger(manager) {
-  manager.registerSystem("bodydebugger", {
+function bodyDebugger(manager,renderer) {
+  console.log(manager)
+  manager.events.add('add', (entity) => {
+    if (entity.has('body')) {
+      const sprite = new Sprite(
+        new BoxGeometry(50,50),
+        new BasicMaterial());
+      manager.addComponents([sprite]);
+    }
+  });
+  manager.registerSystem({
     key: new Map(),
     renderer: null,
     init(manager) {
       this.renderer = manager.getSystem('renderer');
-      manager.events.add('add', (entity) => {
-        if (entity.has('body')) {
-          entity.manager.getSystem('bodydebugger').add(entity.get("body"));
-        }
-        manager.events.add('remove', (entity) => {
-          if (entity.has('body')) {
-            entity.manager.getSystem('bodydebugger').remove(entity.get("body"));
-          }
-        });
-      });
-    },
-    add(body) {
-      const sprite = new BodySprite(body);
-      sprite.init(body.entity);
-      this.renderer.add(sprite);
-      this.key.set(body, sprite);
     },
     remove(body) {
       const sprite = this.key.get(body);

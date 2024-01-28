@@ -4,7 +4,8 @@ import {
   Clock,
   Perf,
   EventDispatcher,
-  Err
+  Err,
+  Entity
 } from "./chaos.module.js"
 import { NaiveArchTypeTable } from "./naivearchtypetable.js"
 export class ArchetypedManager {
@@ -12,9 +13,9 @@ export class ArchetypedManager {
    * RAF number of current frame.Used for pausing the manager.
    * 
    * @private
-   * @type number
+   * @type {number}
    */
-  _rafID = undefined
+  _rafID = 0
   /**
    * @private
    */
@@ -22,7 +23,7 @@ export class ArchetypedManager {
   /**
    * 
    * @private
-   * @type System[]
+   * @type {System[]}
    */
   _systems = []
   /**
@@ -35,50 +36,47 @@ export class ArchetypedManager {
   /**
    * 
    * @private
-   * @type boolean
+   * @type {boolean}
    */
   _initialized = false
   /**
    * Whether or not the manager is playing.
    * 
-   * @type boolean
+   * @type {boolean}
    */
   playing = false
   /**
    * 
    * @private
-   * @type Object<string, string>
+   * @type {Clock}
    */
   clock = new Clock()
   /**
    * 
    * @private
-   * @type Entity[]
+   * @type {Entity[]}
    */
   objects = []
   /**
    * 
    * @private
-   * @type number
+   * @type {number}
    */
   _accumulator = 0
   /**
    * Ideal framerate of the manager.Not implemented corrretly.
    * TODO correct it
    * 
-   * @type number
+   * @type {number}
    */
   frameRate = 0
   /**
-   * 
-   * @ignore.
-   * This is an artifact of me debugging this.
-   * TODO - Should implement a better soluton
+   * @type {Perf}
    */
   perf = new Perf()
   /**
    * @readonly
-   * @type EventDispatcher
+   * @type {EventDispatcher}
    */
   events = new EventDispatcher()
   /**
@@ -106,10 +104,10 @@ export class ArchetypedManager {
    **/
   constructor(options = {}) {
     options = Object.assign({
-      autoplay:true,
-    },options)
+      autoplay: true,
+    }, options)
     this.init()
-    if(options.autoplay)this.play()
+    if (options.autoplay) this.play()
   }
   /**
    * This initializes the manager.
@@ -160,9 +158,12 @@ export class ArchetypedManager {
    * This removes all of the entities and components from the manager
    */
   clear() {
+    this.events.trigger("clear")
     this._table.clear()
-    this.events.trigger("clear");
-    this.objects.length = 0
+    for (let i = 0; i < this.objects.length; i++) {
+      this.objects[i].id = -1
+    }
+    this.objects = []
   }
   /**
    * This method requests an animation frame from the browser

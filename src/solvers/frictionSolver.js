@@ -1,4 +1,4 @@
-import { Vector2, sq }from "../../math/index.js"
+import { Vector2, sq } from "../chaos.module.js"
 
 let tmp1 = new Vector2(),
   tmp2 = new Vector2(),
@@ -8,17 +8,17 @@ let tmp1 = new Vector2(),
 
 /**
  * Solves for impulse along collision tangent for a given body pair.
-*/
+ */
 export const FrictionSolver = {
   /***/
-  solve(manifold) {
+  solve(velA, velB, rotA, rotB, manifold) {
     let { bodyA: a, bodyB: b, ca1, ca2, impulse } = manifold
     let { axis } = manifold.contactData
     if (impulse <= 0) return
-    let a$va = tmp1.set(ca1.y * -a.rotation.value, ca1.x * a.rotation.value)
-    let a$vb = tmp2.set(ca2.y * -b.rotation.value, ca2.x * b.rotation.value)
-    let va = tmp3.copy(a.velocity).add(a$va)
-    let vb = tmp4.copy(b.velocity).add(a$vb)
+    let a$va = tmp1.set(ca1.y * -rotA.value, ca1.x * rotA.value)
+    let a$vb = tmp2.set(ca2.y * -rotB.value, ca2.x * rotB.value)
+    let va = tmp3.copy(velA).add(a$va)
+    let vb = tmp4.copy(velB).add(a$vb)
     let relVel = va.sub(vb)
     if (relVel.magnitudeSquared() === 0)
       return
