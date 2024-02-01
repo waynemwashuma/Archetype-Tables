@@ -270,13 +270,13 @@ export class SATNarrowPhase extends NarrowPhase {
    * @param {CollisionPair[]} contactList 
    * @param {Manifold[]} [clmds=[]]
    */
-  getCollisionPairs(body, transform, contactList, clmds = []) {
+  getCollisionPairs(body, transform, movable, contactList, clmds = []) {
     for (let i = 0; i < contactList.length; i++) {
-      let { indexA, indexB } = contactList[i];
+      const { indexA, indexB } = contactList[i];
       const a = body[indexA[0]][indexA[1]]
       const b = body[indexB[0]][indexB[1]]
       const transformA = transform[indexA[0]][indexA[1]]
-      const transformB = transform[indexA[0]][indexA[1]]
+      const transformB = transform[indexB[0]][indexB[1]]
       a.sleeping = false;
       b.sleeping = false;
       const manifold = {
@@ -307,10 +307,13 @@ export class SATNarrowPhase extends NarrowPhase {
         velA: new Vector2(),
         velB: new Vector2(),
         rotA: 0,
-        rotB: 0
-
+        rotB: 0,
+        movableA: movable[indexA[0]][indexA[1]],
+        movableB: movable[indexB[0]][indexB[1]],
+        transformA,
+        transformB
       }
-      let collisionData = manifold.contactData;
+      const collisionData = manifold.contactData;
       collisionData.overlap = -Infinity;
       collisionData.done = false;
       SAT.shapesInBodyCollided(a, b, collisionData);

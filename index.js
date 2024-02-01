@@ -5,6 +5,7 @@ import {
   World as World2D,
   World,
   Box,
+  Ball,
   Body,
   Sprite,
   BasicMaterial,
@@ -18,8 +19,10 @@ import { QueryWorld } from "./src/queryWorld.js"
 import { QueryRenderer } from "./src/queryRenderer.js"
 import { measurePerf } from "./src/tester.js"
 
-const sample = stack(200,500,50,50,10000)//createSample(10, ["sprite", "body"])
-
+const sample =stack(500,0,50,50,100) 
+//const sample = createSample(100, ["sprite", "body"])
+//sample[1].get("transform").position.x +=20
+//sample[1].get("transform"). orientation.value+= Math.PI /1900
 const queryrenderer = new QueryRenderer()
 const defaultRenderer = new Renderer2D()
 queryrenderer.bindTo("#can")
@@ -33,16 +36,16 @@ const typedmanager = new ArchetypedManager({
   autoplay: false
 })
 
-sample.push(createPlatform(
+sample.push(...createPlatform(
   queryrenderer.width / 2,
   queryrenderer.height - 100,
   queryrenderer.width,
   50
 ))
 
-defaultmanager.registerSystem("renderer", defaultRenderer)
+//defaultmanager.registerSystem("renderer", defaultRenderer)
 typedmanager.registerSystem(queryrenderer)
-typedmanager.registerSystem({
+/*typedmanager.registerSystem({
   update: (dt, manager) => {
     const { bounds } = manager.query(["bounds"])
     queryrenderer.ctx.strokeStyle = "red"
@@ -53,13 +56,34 @@ typedmanager.registerSystem({
       }
     }
   }
-})
+})*/
 defaultmanager.registerSystem("world", world)
 typedmanager.registerSystem(queryworld)
+typedmanager.registerSystem({
+  update(dt) {
+    const ctx = queryrenderer.ctx
+    const clmds = queryworld.CLMDs
+    ctx.save()
+    ctx.lineWidth = 3
+    ctx.strokeStyle = "blue"
+    for (let i = 0; i < clmds.length; i++) {
+      const manifold = clmds[i]
 
+      ctx.beginPath()
+      ctx.moveTo(...manifold.bodyA.position)
+      ctx.lineTo(...manifold.ca1.add(manifold.bodyA.position))
+      ctx.moveTo(...manifold.bodyB.position)
+      ctx.lineTo(...manifold.ca2.add(manifold.bodyB.position))
+      ctx.closePath()
+      ctx.stroke()
+    }
+    ctx.restore()
+  }
+})
 /*console.log("-------Insertion performance------")
 testPerformanceAdd(defaultmanager, typedmanager)/**/
 console.log("-------Update performance------")
+//typedmanager.update(0.016)
 addToManager(defaultmanager, sample)
 addToManager(typedmanager, sample)
 testPerformanceUpdate(defaultmanager, typedmanager) /**/
@@ -106,12 +130,12 @@ function createEntityhere(comps) {
     switch (comps[i]) {
       case 'sprite':
         entity.attach("sprite", new Sprite(
-          new BoxGeometry(50, 50),
+          new BoxGeometry(50, 10),
           new BasicMaterial()
         ))
         break;
       case 'body':
-        entity.attach("body", new Box(50, 50))
+        entity.attach("body", new Box(50,10))
         break;
     }
   }
@@ -143,29 +167,50 @@ function createPlatform(x, y, w, h) {
     new BoxGeometry(w, h),
     new BasicMaterial()
   )
+  let sprite1 = new Sprite(
+    new BoxGeometry(h, w),
+    new BasicMaterial()
+  )
+  let sprite2 = new Sprite(
+    new BoxGeometry(h, w),
+    new BasicMaterial()
+  )
   let body = new Box(w, h)
+  let body1 = new Box(h, w)
+  let body2 = new Box(h, w)
   body.type = Body.STATIC
-  return createEntity(x, y)
+  body1.type = Body.STATIC
+  body2.type = Body.STATIC
+
+  return [
+    createEntity(x, y)
     .attach("body", body)
-    .attach("sprite", sprite)
+    .attach("sprite", sprite),
+    createEntity(x + w / 2, y)
+    .attach("body", body1)
+    .attach("sprite", sprite1),
+    createEntity(x - w / 2, y)
+      .attach("body", body2)
+      .attach("sprite", sprite2),
+    ]
 }
 
 function stack(x, y, w, h, no, spacing = 0) {
   const entities = []
   for (var i = 0; i < no; i++) {
     let entity = createEntity(x, y + (h + spacing) * i)
-      .attach("body",new Box(w, h))
-      .attach("sprite",new Sprite(
-        new BoxGeometry(w,h),
+      .attach("body", new Box(w, h))
+      .attach("sprite", new Sprite(
+        new BoxGeometry(w, h),
         new BasicMaterial()
-        ))
+      ))
     entities.push(entity)
   }
   return entities
 }
-
-//queryworld.gravity = 900
+//world.gravity = 900
+queryworld.gravity = 900
 //defaultmanager.play()
-//typedmanager.play()
-//console.log(typedmanager)
+typedmanager.play()
+console.log(queryworld)
 //console.log(defaultmanager)

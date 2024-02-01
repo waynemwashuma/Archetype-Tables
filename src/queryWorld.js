@@ -10,13 +10,6 @@ import { Err as Logger } from "./chaos.module.js";
  */
 export class QueryWorld extends System {
   /**
-   * A record of collision manifolds.
-   * 
-   * @type {Map<number,Manifold>}
-   * @protected
-   */
-  records = new Map()
-  /**
    * A list of constraints fixed to a static object.
    * 
    * @type {Constraint[]}
@@ -79,14 +72,14 @@ export class QueryWorld extends System {
    * 
    * @type {Broadphase}
    */
-  broadphase = null
+  broadphase = new NaiveBroadphase()
   /**
    * This accurately tests body pairs to check 
    * for collision and outputs a manifold for each body pair.
    * 
    * @type {NarrowPhase}
    */
-  narrowphase = null
+  narrowphase = new SATNarrowPhase()
   /**
    * Moves the bodies forward in time.
    * 
@@ -98,12 +91,6 @@ export class QueryWorld extends System {
    * @default true
    */
   enableIntergrate = true
-
-  constructor() {
-    super()
-    this.broadphase = new NaiveBroadphase(this)
-    this.narrowphase = new SATNarrowPhase()
-  }
 
   /**
    * Gravitational pull of the world,will affect all bodies except static bodies.
@@ -124,11 +111,11 @@ export class QueryWorld extends System {
   /**
    * @private
    */
-  collisionDetection(body, bounds, transform) {
+  collisionDetection(body, bounds, transform, movable) {
     this.broadphase.update(body, bounds)
     this.contactList =
       this.broadphase.getCollisionPairs(body, bounds, [])
-    this.CLMDs = this.narrowphase.getCollisionPairs(body, transform, this.contactList, [])
+    this.CLMDs = this.narrowphase.getCollisionPairs(body, transform, movable, this.contactList, [])
   }
   /**
    * @private
@@ -141,42 +128,43 @@ export class QueryWorld extends System {
 
     for (let j = 0; j < this.velocitySolverIterations; j++) {
       for (let i = 0; i < length; i++) {
-        this.CLMDs[i].velA.set(0, 0)
-        this.CLMDs[i].velB.set(0, 0)
-        this.CLMDs[i].rotA = 0
-        this.CLMDs[i].rotB = 0
-        const { indexA, indexB } = this.CLMDs[i]
+        const {movableA,movableB} = this.CLMDs[i]
         ImpulseSolver.solve(
-          movable[indexA[0]][indexA[1]].velocity,
-          movable[indexB[0]][indexB[1]].velocity,
-          movable[indexA[0]][indexA[1]].rotation,
-          movable[indexB[0]][indexB[1]].rotation,
+          movableA.velocity,
+          movableB.velocity,
+          movableA.rotation,
+          movableB.rotation,
           this.CLMDs[i]
         )
         FrictionSolver.solve(
-          movable[indexA[0]][indexA[1]].velocity,
-          movable[indexB[0]][indexB[1]].velocity,
-          movable[indexA[0]][indexA[1]].rotation,
-          movable[indexB[0]][indexB[1]].rotation,
+          movableA.velocity,
+          movableB.velocity,
+          movableA.rotation,
+          movableB.rotation,
           this.CLMDs[i]
         )
       }
       for (let i = 0; i < length; i++) {
-        const { indexA, indexB } = this.CLMDs[i]
-        movable[indexA[0]][indexA[1]].velocity.add(this.CLMDs[i].velA)
-        movable[indexA[0]][indexA[1]].rotation.value += this.CLMDs[i].rotA
-        movable[indexB[0]][indexB[1]].velocity.add(this.CLMDs[i].velB)
-        movable[indexB[0]][indexB[1]].rotation.value += this.CLMDs[i].rotB
+        const {movableA,movableB} = this.CLMDs[i]
+        
+        movableA.velocity.add(this.CLMDs[i].velA)
+        movableA.rotation.value += this.CLMDs[i].rotA
+        movableB.velocity.add(this.CLMDs[i].velB)
+        movableB.rotation.value += this.CLMDs[i].rotB
+        this.CLMDs[i].velA.set(0, 0)
+        this.CLMDs[i].velB.set(0, 0)
+        this.CLMDs[i].rotA = 0
+        this.CLMDs[i].rotB = 0
       }
     }
 
     for (let i = 0; i < length; i++) {
-      const { indexA, indexB } = this.CLMDs[i]
+      const {movableA,movableB} = this.CLMDs[i]
       PenetrationSolver.solve(
-        movable[indexA[0]][indexA[1]].velocity,
-        movable[indexB[0]][indexB[1]].velocity,
-        movable[indexA[0]][indexA[1]].rotation,
-        movable[indexB[0]][indexB[1]].rotation,
+        movableA.velocity,
+        movableB.velocity,
+        movableA.rotation,
+        movableB.rotation,
         this.CLMDs[i],
         inv_dt
       )
@@ -310,9 +298,9 @@ export class QueryWorld extends System {
    */
   update(dt, manager) {
     let { transform, movable, bounds, body } = manager.query(["transform", "movable", "bounds", "body"])
-    this.applyForces(movable,body, dt)
+    this.applyForces(movable, body, dt)
     this.updateBodies(body, transform, bounds)
-    this.collisionDetection(body, bounds, transform)
+    this.collisionDetection(body, bounds, transform, movable)
     this.collisionResponse(movable, dt)
     if (this.enableIntergrate)
       this.intergrate(transform, movable, dt)

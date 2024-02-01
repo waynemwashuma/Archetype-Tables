@@ -22,7 +22,7 @@ export const Settings = {
   posDampen: 0.80,
   linearDamping: 0.001,
   angularDamping: 0.001,
-  velocitySolverIterations: 10,
+  velocitySolverIterations: 100,
   fixedFrameRate: 0.016,
   
   //For all bodies
