@@ -1,9 +1,9 @@
 import {
   Manager,
+  Entity,
   createEntity,
   Renderer2D,
   World as World2D,
-  World,
   Box,
   Ball,
   Body,
@@ -11,6 +11,8 @@ import {
   BasicMaterial,
   BoxGeometry,
   Movable,
+  Transform,
+  Bound,
   rand,
   bodyDebugger
 } from "./src/chaos.module.js"
@@ -19,8 +21,8 @@ import { QueryWorld } from "./src/queryWorld.js"
 import { QueryRenderer } from "./src/queryRenderer.js"
 import { measurePerf } from "./src/tester.js"
 
-const sample =stack(500,0,50,50,100) 
-//const sample = createSample(100, ["sprite", "body"])
+//const sample =stack(500,0,50,50,100) 
+const sample = createSample(1000, ["transform","bounds","movable","sprite", "body"])
 //sample[1].get("transform").position.x +=20
 //sample[1].get("transform"). orientation.value+= Math.PI /1900
 const queryrenderer = new QueryRenderer()
@@ -44,7 +46,10 @@ sample.push(...createPlatform(
 ))
 
 //defaultmanager.registerSystem("renderer", defaultRenderer)
-typedmanager.registerSystem(queryrenderer)
+//typedmanager.registerSystem(queryrenderer)
+defaultmanager.registerSystem("world", world)
+typedmanager.registerSystem(queryworld)
+
 /*typedmanager.registerSystem({
   update: (dt, manager) => {
     const { bounds } = manager.query(["bounds"])
@@ -57,9 +62,7 @@ typedmanager.registerSystem(queryrenderer)
     }
   }
 })*/
-defaultmanager.registerSystem("world", world)
-typedmanager.registerSystem(queryworld)
-typedmanager.registerSystem({
+/*typedmanager.registerSystem({
   update(dt) {
     const ctx = queryrenderer.ctx
     const clmds = queryworld.CLMDs
@@ -82,23 +85,23 @@ typedmanager.registerSystem({
 })
 /*console.log("-------Insertion performance------")
 testPerformanceAdd(defaultmanager, typedmanager)/**/
+
 console.log("-------Update performance------")
-//typedmanager.update(0.016)
 addToManager(defaultmanager, sample)
 addToManager(typedmanager, sample)
-testPerformanceUpdate(defaultmanager, typedmanager) /**/
+testPerformanceUpdate(defaultmanager, typedmanager,"Default","Archetyped") /**/
 
-function testPerformanceUpdate(manager1, manager2) {
+function testPerformanceUpdate(manager1, manager2,tag1 = "Manager1",tag2="Manager2") {
   const t1 = measurePerf(() => { manager1.update(0.016) })
   const t2 = measurePerf(() => { manager2.update(0.016) })
 
-  console.log("Manager1 ::" + t1 + "ms")
-  console.log("Manager2 ::" + t2 + "ms")
+  console.log(tag1 + " ::" + t1 + "ms")
+  console.log(tag2 + " ::" + t2 + "ms")
 
   if (t1 < t2) {
-    console.log("Manager1 is " + (t2 - t1) * 100 / t1 + "% faster")
+    console.log(tag1 + " is " + (t2 - t1) * 100 / t1 + "% faster")
   } else {
-    console.log("Manager2 is " + ((t1 - t2) * 100 / t2).toFixed(2) + "% faster")
+    console.log(tag2 + " is " + ((t1 - t2) * 100 / t2).toFixed(2) + "% faster")
   }
 }
 
@@ -125,7 +128,7 @@ function addToManager(manager, entities) {
 }
 
 function createEntityhere(comps) {
-  const entity = createEntity(rand(0, 1000), rand(0, 1000))
+  const entity = new Entity()
   for (let i = 0; i < comps.length; i++) {
     switch (comps[i]) {
       case 'sprite':
@@ -135,7 +138,16 @@ function createEntityhere(comps) {
         ))
         break;
       case 'body':
-        entity.attach("body", new Box(50,10))
+        entity.attach("body", new Box(50, 10))
+        break;
+      case "transform":
+        entity.attach("transform", new Transform(50, 10))
+        break;
+      case "movable":
+        entity.attach("movable", new Movable())
+        break;
+      case "bounds":
+        entity.attach("bounds", new Bound(50, 10))
         break;
     }
   }
@@ -145,7 +157,7 @@ function createEntityhere(comps) {
 function createSample(number, comps) {
   const entities = []
   for (var i = 0; i < number; i++) {
-    const actual = comps // comps.filter(e => rand() > 0.6)
+    const actual = comps//.filter(e => rand() > 0.6)
     entities.push(createEntityhere(actual))
   }
   return entities
@@ -209,8 +221,8 @@ function stack(x, y, w, h, no, spacing = 0) {
   return entities
 }
 //world.gravity = 900
-queryworld.gravity = 900
+//queryworld.gravity = 900
 //defaultmanager.play()
-typedmanager.play()
-console.log(queryworld)
+//typedmanager.play()
+console.log(sample)
 //console.log(defaultmanager)
